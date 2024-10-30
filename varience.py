@@ -4,6 +4,8 @@ import yfinance as yf
 import plotly.graph_objects as go
 import streamlit as st
 import plotly.express as px
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Streamlit app title
 st.title("Prediction Error Over Time with Prophet")
@@ -102,6 +104,47 @@ error_df = pd.DataFrame({
 
 # Calculate Percentage Error
 error_df['Percentage Error'] = (error_df['Error'] / error_df['Actual']) * 100
+
+# Add a column to track if error exceeds $5 threshold
+error_df['OutOfBounds'] = error_df['Error'].apply(lambda x: abs(x) > 5)
+
+# Add rolling mean and rolling standard deviation columns
+error_df['Rolling_Mean_Error'] = error_df['Error'].rolling(window=10).mean()
+error_df['Rolling_Std_Error'] = error_df['Error'].rolling(window=10).std()
+
+from prophet.diagnostics import cross_validation, performance_metrics
+
+# Perform cross-validation with an initial training period and horizon
+df_cv = cross_validation(model, initial='730 days', period='180 days', horizon='30 days')
+df_p = performance_metrics(df_cv)
+st.write("Cross-Validation Performance Metrics")
+st.dataframe(df_p)
+
+# Show Metrics
+st.write("Mean Absolute Error (MAE):", error_df['Error'].abs().mean())
+st.write("Root Mean Squared Error (RMSE):", (error_df['Error'] ** 2).mean() ** 0.5)
+st.write("Mean Absolute Percentage Error (MAPE):", error_df['Percentage Error'].abs().mean())
+
+# Plot Error Histogram
+fig_hist, ax_hist = plt.subplots()
+sns.histplot(error_df['Error'], bins=20, kde=True, ax=ax_hist)
+ax_hist.set_title("Error Distribution Histogram")
+ax_hist.set_xlabel("Prediction Error")
+st.pyplot(fig_hist)
+
+# Box Plot of Errors
+fig_box, ax_box = plt.subplots()
+sns.boxplot(y=error_df['Error'], ax=ax_box)
+ax_box.set_title("Box Plot of Prediction Errors")
+st.pyplot(fig_box)
+
+# Plot Rolling Mean and Rolling Standard Deviation
+fig_rolling, ax_rolling = plt.subplots()
+ax_rolling.plot(error_df['Date'], error_df['Rolling_Mean_Error'], label='Rolling Mean Error')
+ax_rolling.plot(error_df['Date'], error_df['Rolling_Std_Error'], label='Rolling Std Error')
+ax_rolling.set_title("Rolling Mean and Std of Prediction Errors")
+ax_rolling.legend()
+st.pyplot(fig_rolling)
 
 # Create a line chart of the prediction error over time
 fig_error = px.line(
