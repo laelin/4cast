@@ -34,7 +34,7 @@ for i in range(increment, len(data), increment):
     model.fit(subset_data)
 
     # Make future predictions (up to mid-2025)
-    future = model.make_future_dataframe(periods=365)
+    future = model.make_future_dataframe(periods=180)
     forecast = model.predict(future)
 
     # Append the current frame data
