@@ -1,8 +1,8 @@
-streamlit==1.26.0
-prophet==1.2.4
-yfinance==0.2.20
-plotly==5.17.0
-pandas==1.5.3
-cmdstanpy==1.1.0
-pystan==2.19.1.1
+streamlit
+Prophet
+yfinance
+plotly
+pandas
+cmdstanpy
+pystan
 
