@@ -5,4 +5,4 @@ plotly
 pandas
 cmdstanpy
 pystan
-
+seaborn
