@@ -12,6 +12,13 @@ st.title("Prediction Error Over Time with Prophet")
 data = yf.download('Z', start='2015-01-01', end='2024-10-01')
 data.columns = data.columns.get_level_values(0)  # Flatten MultiIndex columns if present
 
+# Check if data is empty
+if data.empty:
+    raise ValueError("No data downloaded. Please check the ticker symbol and date range.")
+
+# Print the length of data
+print("Length of data:", len(data))
+
 # Prepare the data for Prophet
 data = data.reset_index()
 data['Date'] = data['Date'].dt.tz_localize(None)  # Remove timezone information
@@ -22,7 +29,17 @@ data['y'] = pd.to_numeric(data['y'], errors='coerce')
 
 # Number of prediction waves and increments for training data
 num_waves = 100
+# Adjust num_waves if data length is less
+num_waves = min(num_waves, len(data))
+
 increment = int(len(data) / num_waves)
+
+# Ensure increment is at least 1
+increment = max(1, increment)
+
+# Check if increment is zero
+if increment == 0:
+    raise ValueError("Increment calculated to be zero. Adjust num_waves or ensure data has sufficient length.")
 
 # Initialize lists to store errors and corresponding dates
 dates_of_wave = []
@@ -53,11 +70,17 @@ for i in range(increment, len(data), increment):
         break
 
     # Get the forecasted value at t_i_plus_30
-    forecast_date_index = forecast[forecast['ds'] >= t_i_plus_30].index[0]
+    forecast_future = forecast[forecast['ds'] >= t_i_plus_30]
+    if forecast_future.empty:
+        continue  # Skip if no forecast is available for t_i_plus_30
+    forecast_date_index = forecast_future.index[0]
     yhat_i = forecast.loc[forecast_date_index, 'yhat']
 
     # Get the actual value at t_i_plus_30
-    data_date_index = data[data['ds'] >= t_i_plus_30].index[0]
+    data_future = data[data['ds'] >= t_i_plus_30]
+    if data_future.empty:
+        continue  # Skip if no actual data is available for t_i_plus_30
+    data_date_index = data_future.index[0]
     y_actual_i = data.loc[data_date_index, 'y']
 
     # Compute the error
