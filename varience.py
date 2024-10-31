@@ -6,28 +6,9 @@ import streamlit as st
 import plotly.express as px
 import matplotlib.pyplot as plt
 import seaborn as sns
-import time
 
 # Streamlit app title
 st.title("Prediction Error Over Time with Prophet")
-
-# Stopwatch placeholder
-stopwatch_placeholder = st.empty()
-start_time = time.time()
-
-# Function to update the stopwatch display
-def update_stopwatch():
-    elapsed_time = time.time() - start_time
-    minutes, seconds = divmod(int(elapsed_time), 60)
-    hours, minutes = divmod(minutes, 60)
-    formatted_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-    stopwatch_placeholder.markdown(
-        f"<h1 style='text-align: center; color: #4CAF50; font-size: 48px;'>🕒 {formatted_time}</h1>",
-        unsafe_allow_html=True
-    )
-
-# Initial display of the stopwatch
-update_stopwatch()
 
 # Download historical data for Zillow (Z)
 data = yf.download('Z', start='2015-01-01', end='2024-10-01')
@@ -37,19 +18,8 @@ data.columns = data.columns.get_level_values(0)  # Flatten MultiIndex columns if
 if data.empty:
     raise ValueError("No data downloaded. Please check the ticker symbol and date range.")
 
-# Update stopwatch every 2 seconds until analysis completes
-for _ in range(5):  # Adjust the range depending on the time needed
-    update_stopwatch()
-    time.sleep(2)  # Update every 2 seconds (adjust as necessary)
-
-# Display completion message
-elapsed_time = time.time() - start_time
-minutes, seconds = divmod(int(elapsed_time), 60)
-hours, minutes = divmod(minutes, 60)
-stopwatch_placeholder.markdown(
-    f"<h1 style='text-align: center; color: #E91E63; font-size: 48px;'>✔️ Analysis Complete in {hours:02d}:{minutes:02d}:{seconds:02d}</h1>",
-    unsafe_allow_html=True
-)
+# Print the length of data
+print("Length of data:", len(data))
 
 # Prepare the data for Prophet
 data = data.reset_index()
@@ -61,9 +31,17 @@ data['y'] = pd.to_numeric(data['y'], errors='coerce')
 
 # Number of prediction waves and increments for training data
 num_waves = 100
+# Adjust num_waves if data length is less
 num_waves = min(num_waves, len(data))
+
 increment = int(len(data) / num_waves)
+
+# Ensure increment is at least 1
 increment = max(1, increment)
+
+# Check if increment is zero
+if increment == 0:
+    raise ValueError("Increment calculated to be zero. Adjust num_waves or ensure data has sufficient length.")
 
 # Initialize lists to store errors and corresponding dates
 dates_of_wave = []
@@ -85,29 +63,32 @@ for i in range(increment, len(data), increment):
 
     # Get the last date in the subset (current wave date)
     t_i = subset_data['ds'].iloc[-1]
+
+    # Compute the date 30 days ahead
     t_i_plus_30 = t_i + pd.Timedelta(days=30)
 
     # Check if t_i_plus_30 is within the available data range
     if t_i_plus_30 > data['ds'].iloc[-1]:
         break
 
-    # Get the forecasted and actual values at t_i_plus_30
+    # Get the forecasted value at t_i_plus_30
     forecast_future = forecast[forecast['ds'] >= t_i_plus_30]
     if forecast_future.empty:
-        continue
+        continue  # Skip if no forecast is available for t_i_plus_30
     forecast_date_index = forecast_future.index[0]
     yhat_i = forecast.loc[forecast_date_index, 'yhat']
 
+    # Get the actual value at t_i_plus_30
     data_future = data[data['ds'] >= t_i_plus_30]
     if data_future.empty:
-        continue
+        continue  # Skip if no actual data is available for t_i_plus_30
     data_date_index = data_future.index[0]
     y_actual_i = data.loc[data_date_index, 'y']
 
     # Compute the error
     error_i = yhat_i - y_actual_i
 
-    # Append results to lists
+    # Append the results to the lists
     dates_of_wave.append(t_i)
     errors.append(error_i)
     yhat_list.append(yhat_i)
@@ -123,13 +104,17 @@ error_df = pd.DataFrame({
 
 # Calculate Percentage Error
 error_df['Percentage Error'] = (error_df['Error'] / error_df['Actual']) * 100
+
+# Add a column to track if error exceeds $5 threshold
 error_df['OutOfBounds'] = error_df['Error'].apply(lambda x: abs(x) > 5)
+
+# Add rolling mean and rolling standard deviation columns
 error_df['Rolling_Mean_Error'] = error_df['Error'].rolling(window=10).mean()
 error_df['Rolling_Std_Error'] = error_df['Error'].rolling(window=10).std()
 
 from prophet.diagnostics import cross_validation, performance_metrics
 
-# Perform cross-validation
+# Perform cross-validation with an initial training period and horizon
 df_cv = cross_validation(model, initial='730 days', period='180 days', horizon='30 days')
 df_p = performance_metrics(df_cv)
 st.write("Cross-Validation Performance Metrics")
