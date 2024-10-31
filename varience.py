@@ -6,9 +6,40 @@ import streamlit as st
 import plotly.express as px
 import matplotlib.pyplot as plt
 import seaborn as sns
+import time
 
 # Streamlit app title
 st.title("Prediction Error Over Time with Prophet")
+
+# Stopwatch Code
+stopwatch_placeholder = st.empty()
+start_time = time.time()
+
+# Update the stopwatch
+while True:
+    elapsed_time = time.time() - start_time
+    minutes, seconds = divmod(int(elapsed_time), 60)
+    hours, minutes = divmod(minutes, 60)
+    stopwatch_placeholder.markdown(
+        f"<h1 style='text-align: center; color: #4CAF50; font-size: 48px;'>🕒 {hours:02d}:{minutes:02d}:{seconds:02d}</h1>",
+        unsafe_allow_html=True
+    )
+    time.sleep(1)
+    break
+
+# Download historical data for Zillow (Z)
+data = yf.download('Z', start='2015-01-01', end='2024-10-01')
+data.columns = data.columns.get_level_values(0)  # Flatten MultiIndex columns if present
+
+# Check if data is empty
+if data.empty:
+    raise ValueError("No data downloaded. Please check the ticker symbol and date range.")
+
+# Display completion message
+stopwatch_placeholder.markdown(
+    f"<h1 style='text-align: center; color: #E91E63; font-size: 48px;'>✔️ Analysis Complete in {hours:02d}:{minutes:02d}:{seconds:02d}</h1>",
+    unsafe_allow_html=True
+)
 
 # Download historical data for Zillow (Z)
 data = yf.download('Z', start='2015-01-01', end='2024-10-01')
