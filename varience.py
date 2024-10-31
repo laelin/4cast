@@ -15,15 +15,19 @@ st.title("Prediction Error Over Time with Prophet")
 stopwatch_placeholder = st.empty()
 start_time = time.time()
 
-# Display initial stopwatch time
-elapsed_time = time.time() - start_time
-minutes, seconds = divmod(int(elapsed_time), 60)
-hours, minutes = divmod(minutes, 60)
-formatted_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-stopwatch_placeholder.markdown(
-    f"<h1 style='text-align: center; color: #4CAF50; font-size: 48px;'>🕒 {formatted_time}</h1>",
-    unsafe_allow_html=True
-)
+# Function to update the stopwatch display
+def update_stopwatch():
+    elapsed_time = time.time() - start_time
+    minutes, seconds = divmod(int(elapsed_time), 60)
+    hours, minutes = divmod(minutes, 60)
+    formatted_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    stopwatch_placeholder.markdown(
+        f"<h1 style='text-align: center; color: #4CAF50; font-size: 48px;'>🕒 {formatted_time}</h1>",
+        unsafe_allow_html=True
+    )
+
+# Initial display of the stopwatch
+update_stopwatch()
 
 # Download historical data for Zillow (Z)
 data = yf.download('Z', start='2015-01-01', end='2024-10-01')
@@ -32,6 +36,11 @@ data.columns = data.columns.get_level_values(0)  # Flatten MultiIndex columns if
 # Check if data is empty
 if data.empty:
     raise ValueError("No data downloaded. Please check the ticker symbol and date range.")
+
+# Update stopwatch every 2 seconds until analysis completes
+for _ in range(5):  # Adjust the range depending on the time needed
+    update_stopwatch()
+    time.sleep(2)  # Update every 2 seconds (adjust as necessary)
 
 # Display completion message
 elapsed_time = time.time() - start_time
